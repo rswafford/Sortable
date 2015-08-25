@@ -169,6 +169,7 @@
 			ghostClass: 'sortable-ghost',
 			ignore: 'a, img',
 			filter: null,
+			filterPropagation: null,
 			animation: 0,
 			setData: function (dataTransfer, dragEl) {
 				dataTransfer.setData('Text', dragEl.textContent);
@@ -236,7 +237,8 @@
 				touch = evt.touches && evt.touches[0],
 				target = (touch || evt).target,
 				originalTarget = target,
-				filter = options.filter;
+				filter = options.filter,
+				filterPropagation = options.filterPropagation;
 
 
 			if (type === 'mousedown' && evt.button !== 0 || options.disabled) {
@@ -272,6 +274,29 @@
 
 				if (filter) {
 					evt.preventDefault();
+					return; // cancel dnd
+				}
+			}
+			
+			if (typeof filterPropagation === 'function') {
+				if (filterPropagation.call(this, evt, target, this)) {
+					_dispatchEvent(_this, originalTarget, 'filterPropagation', target, el, oldIndex);
+					evt.stopPropagation();
+					return; // cancel dnd
+				}
+			}
+			else if (filterPropagation) {
+				filterPropagation = filterPropagation.split(',').some(function (criteria) {
+					criteria = _closest(originalTarget, criteria.trim(), el);
+
+					if (criteria) {
+						_dispatchEvent(_this, criteria, 'filterPropagation', target, el, oldIndex);
+						return true;
+					}
+				});
+
+				if (filterPropagation) {
+					evt.stopPropagation();
 					return; // cancel dnd
 				}
 			}
